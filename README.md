@@ -90,7 +90,7 @@ partition are shared by both slots and are not part of an update.
 |---|---|
 | **`rpi-switch-image-rpi-managed-switch-rpi0.rootfs.wic.bz2`** + `.wic.bmap` | The SD card. Both slots are identical at first. |
 | `rpi-switch-image-rpi-managed-switch-rpi0.rootfs.squashfs-xz` | Content of one slot. |
-| `uImage-rpi-managed-switch-rpi0.bin` | Kernel, installed as `kernel-a.img` and `kernel-b.img`. |
+| `zImage-rpi-managed-switch-rpi0.bin` | Kernel, installed as `kernel-a.img` and `kernel-b.img`, booted with `bootz`. |
 
 With meta-ethernet-switch-os, `ethernet-switch-os-swu-upgrade-rpi-managed-switch-rpi0.swu`
 comes on top: the squashfs and the kernel for whichever slot is not running.

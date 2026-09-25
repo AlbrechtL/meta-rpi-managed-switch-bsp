@@ -27,6 +27,12 @@ RPI_EXTRA_CONFIG = "dtoverlay=rtl8365mb-enc28j60-switch"
 DISABLE_VC4GRAPHICS = "1"
 ENABLE_UART = "1"
 
+# Kernel messages on HDMI as well as on the serial port. U-Boot already
+# prints on both, meta-raspberrypi only gives the kernel serial0. The last
+# console= is /dev/console, where init and the rc scripts write, so serial
+# stays last.
+CMDLINE_SERIAL = "console=tty1 console=serial0,115200"
+
 # Everything the switch needs is built into the kernel
 # (rpi-managed-switch.cfg). The full module tree would only add tens of MB to
 # each root filesystem slot.
@@ -40,6 +46,15 @@ MACHINE_EXTRA_RRECOMMENDS:remove = "kernel-modules"
 # boot.scr (recipes-bsp/rpi-u-boot-scr) picks the slot from "rootpart" in
 # uboot.env. See files/wic/rpi-managed-switch-ab.wks.in for the partitions.
 RPI_USE_U_BOOT = "1"
+
+# The zImage itself, booted with bootz. meta-raspberrypi's default with
+# U-Boot wraps it in a legacy uImage for bootm, which first copies the image
+# to its load address, and rpi_config limits that copy to
+# CONFIG_SYS_BOOTM_LEN = 8 MiB. This kernel is larger:
+#   Image too large: increase CONFIG_SYS_BOOTM_LEN
+# bootz starts the zImage where boot.scr loaded it, without that limit.
+KERNEL_IMAGETYPE_UBOOT = "zImage"
+KERNEL_BOOTCMD = "bootz"
 
 # One kernel per slot in the boot partition, as the images are identical at
 # first. U-Boot has no squashfs support in rpi_config, so the kernel cannot live
