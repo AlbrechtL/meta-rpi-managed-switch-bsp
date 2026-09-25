@@ -7,6 +7,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 #
 # 0001 only adjusts context: OpenWrt's 6.18.y already has
 # gpiod_set_value_cansleep() in rtl83xx.c, the Raspberry Pi 6.18.33 does not.
+# 0004 supplies field_get(), which the backports expect from v6.19.
 SRC_URI:append:rpi-managed-switch = " \
     file://0001-net-dsa-realtek-use-gpiod_set_value_cansleep-for-reset.patch \
     file://rtl8365mb-backport/940-01-v7.1-net-dsa-tag_rtl8_4-update-format-description.patch \
@@ -27,6 +28,7 @@ SRC_URI:append:rpi-managed-switch = " \
     file://rtl8365mb-backport/944-02-v7.2-net-dsa-realtek-use-devm_mutex_init-for-regmap-lock.patch \
     file://rtl8365mb-backport/944-03-v7.2-net-dsa-realtek-use-devm_mutex_init-for-vlan_lock.patch \
     file://rtl8365mb-backport/944-04-v7.2-net-dsa-realtek-use-devm_mutex_init-for-l2_lock.patch \
+    file://0004-net-dsa-realtek-rtl8365mb-provide-field_get-on-6.18.patch \
 "
 
 # The board itself, from https://github.com/AlbrechtL/openwrt/tree/rpi_managed_switch:
@@ -36,3 +38,8 @@ SRC_URI:append:rpi-managed-switch = " \
     file://0003-ARM-dts-overlays-add-rtl8365mb-enc28j60-switch.patch \
     file://rpi-managed-switch.cfg \
 "
+
+# Report every symbol of rpi-managed-switch.cfg that does not reach .config.
+# At the default level do_kernel_configcheck filters them out, and the switch
+# driver once ended up =m without a word, in an image without modules.
+KCONF_AUDIT_LEVEL = "2"

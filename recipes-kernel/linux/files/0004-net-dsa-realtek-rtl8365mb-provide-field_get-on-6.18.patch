@@ -1,0 +1,44 @@
+From adb2bef030da36f6f2accbed7379e4c141989d23 Mon Sep 17 00:00:00 2001
+From: Albrecht Lohofener <albrechtloh@gmx.de>
+Date: Fri, 25 Sep 2026 11:12:46 +0200
+Subject: [PATCH] net: dsa: realtek: rtl8365mb: provide field_get() on 6.18
+
+The VLAN support backported from v7.2 reads the per-port accepted frame
+type with field_get(), the helper for masks that are not compile-time
+constants. It was added to <linux/bitfield.h> in v6.19, so on 6.18 the
+build fails:
+
+  rtl8365mb_vlan.c:717:23: error: implicit declaration of function 'field_get'
+
+OpenWrt backports the bitfield change itself (211-02-v6.19). That would
+clash here with the local field_get()/field_prep() macros that about ten
+drivers in the Raspberry Pi 6.18 tree still define, which upstream only
+removed together with that change. Define it locally instead, with the same
+body those drivers use, and only where the kernel does not provide it.
+
+Upstream-Status: Inappropriate [6.18 compatibility for a v7.2 backport]
+Signed-off-by: Albrecht Lohofener <albrechtloh@gmx.de>
+---
+ drivers/net/dsa/realtek/rtl8365mb_vlan.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/net/dsa/realtek/rtl8365mb_vlan.c b/drivers/net/dsa/realtek/rtl8365mb_vlan.c
+index 64dd8d90..2d64593e 100644
+--- a/drivers/net/dsa/realtek/rtl8365mb_vlan.c
++++ b/drivers/net/dsa/realtek/rtl8365mb_vlan.c
+@@ -52,6 +52,15 @@
+ #include <linux/lockdep.h>
+ #include <linux/regmap.h>
+ 
++/*
++ * The non-constant field_get() helper arrived in <linux/bitfield.h> with
++ * v6.19. On older kernels, fall back to the definition the drivers that
++ * carried their own copy used.
++ */
++#ifndef field_get
++#define field_get(_mask, _reg) (((_reg) & (_mask)) >> (ffs(_mask) - 1))
++#endif
++
+ /* CVLAN (i.e. VLAN4k) table entry layout, u16[3] */
+ #define RTL8365MB_CVLAN_ENTRY_SIZE			3 /* 48-bits */
+ #define RTL8365MB_CVLAN_ENTRY_D0_MBR_MASK		GENMASK(7, 0)

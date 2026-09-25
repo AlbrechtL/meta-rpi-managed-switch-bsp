@@ -10,15 +10,20 @@
 #   p3  slot B  squashfs  256 MiB
 #   p4  data    ext4      256 MiB
 #
+# rawcopy knows no file system, so the slots get their MBR type (0x83, Linux)
+# from --system-id; wic would otherwise mark them FAT.
+#
 # The partition numbers are fixed: boot.scr, overlay-init and the .swu refer to
 # them. MBR has room for exactly these four primary partitions.
 #
 # The image file comes from IMGDEPLOYDIR, since wic runs before
-# do_image_complete copies it to DEPLOY_DIR_IMAGE.
+# do_image_complete copies it to DEPLOY_DIR_IMAGE. By its link name: when only
+# do_image_wic reruns, the squashfs keeps the time stamp of the build that
+# made it, and IMAGE_NAME has a new one.
 
 part /boot --source bootimg-partition --ondisk mmcblk0 --fstype=vfat --label boot --active --align 4096 --fixed-size 64M --no-fstab-update
-part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_NAME}.squashfs-xz" --ondisk mmcblk0 --align 4096 --fixed-size 256M
-part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_NAME}.squashfs-xz" --ondisk mmcblk0 --align 4096 --fixed-size 256M
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.squashfs-xz" --ondisk mmcblk0 --align 4096 --fixed-size 256M --system-id 0x83
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_LINK_NAME}.squashfs-xz" --ondisk mmcblk0 --align 4096 --fixed-size 256M --system-id 0x83
 part --fstype=ext4 --label data --ondisk mmcblk0 --align 4096 --fixed-size 256M
 
 bootloader --ptable msdos
