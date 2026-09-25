@@ -9,11 +9,36 @@ Part of **Ethernet Switch OS**. See [ethernet-switch-os](https://github.com/Albr
 Yocto BSP layer for the [4-port managed switch HAT](https://github.com/AlbrechtL/rpi-managed-switch-4-port)
 for the Raspberry Pi: an RTL8367S switch whose CPU port is connected to an
 ENC28J60 SPI Ethernet controller. Linux drives it with DSA (`rtl8365mb`).
-The layer builds on [meta-raspberrypi](https://git.yoctoproject.org/meta-raspberrypi).
+The layer builds on [meta-raspberrypi](https://git.yoctoproject.org/meta-raspberrypi)
+(branch `wrynose`).
 
-| Board | Pi | `MACHINE` |
+## Supported hardware
+
+| Hardware | `MACHINE` | Status |
 |---|---|---|
-| 4-port managed switch HAT on a Raspberry Pi Zero (experimental) | Zero (BCM2835, ARMv6) | `rpi-managed-switch-rpi0` |
+| 4-port managed switch HAT on a Raspberry Pi Zero (BCM2835, ARMv6) | `rpi-managed-switch-rpi0` | Experimental |
+| … on a Raspberry Pi Zero 2, 3 or 4 | — | Not yet: needs a machine `.conf` each. The HAT itself supports them. |
+| … on a Raspberry Pi 5 | — | Not planned for now; the HAT does not work with OpenWrt on a Pi 5 either ([openwrt/openwrt#18034](https://github.com/openwrt/openwrt/issues/18034)). |
+
+The switch chip is a Realtek RTL8367S with four Gigabit front ports
+(`lan1`..`lan4`). The Pi talks to it through an ENC28J60 on SPI0 (the DSA
+conduit) and manages it over Realtek SMI, bit-banged on GPIO17/GPIO27. See
+the [hardware repository](https://github.com/AlbrechtL/rpi-managed-switch-4-port)
+for schematics, the KiCad design and the known hardware issues.
+
+## Building
+
+The layer is meant to be built through
+[ethernet-switch-os](https://github.com/AlbrechtL/ethernet-switch-os), whose
+kas files check out this layer, meta-raspberrypi and the rest:
+
+```sh
+git clone https://github.com/AlbrechtL/ethernet-switch-os
+cd ethernet-switch-os
+./kas-container build kas/board/rpi-managed-switch-rpi0.yml
+```
+
+## Layer contents
 
 The hardware support is ported from the OpenWrt branch
 [AlbrechtL/openwrt `rpi_managed_switch`](https://github.com/AlbrechtL/openwrt/tree/rpi_managed_switch):
@@ -90,3 +115,18 @@ The serial console is on the GPIO header (GPIO14/15), 115200 8N1.
   boots slot A.
 - There is no watchdog yet. A slot that hangs without a kernel panic is not
   rolled back without a power cycle.
+
+## Links
+
+- [ethernet-switch-os](https://github.com/AlbrechtL/ethernet-switch-os):
+  the build entry point (kas) and the [user guide](https://albrechtl.github.io/ethernet-switch-os/)
+- [meta-ethernet-switch-os](https://github.com/AlbrechtL/meta-ethernet-switch-os):
+  the distro and userspace on top of this layer
+- [rpi-managed-switch-4-port](https://github.com/AlbrechtL/rpi-managed-switch-4-port):
+  the switch HAT hardware
+- [AlbrechtL/openwrt `rpi_managed_switch`](https://github.com/AlbrechtL/openwrt/tree/rpi_managed_switch):
+  the OpenWrt port this layer is derived from
+- [meta-raspberrypi](https://git.yoctoproject.org/meta-raspberrypi):
+  the Raspberry Pi BSP this layer builds on
+- [meta-rtl83xx-bsp](https://github.com/AlbrechtL/meta-rtl83xx-bsp):
+  the sibling BSP for Realtek RTL83xx switches
