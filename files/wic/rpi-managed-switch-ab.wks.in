@@ -1,0 +1,24 @@
+# short-description: A/B SD card image for the Raspberry Pi 4-port managed switch
+# long-description: Boot partition with the Raspberry Pi firmware, U-Boot and
+# one kernel per slot, two identical squashfs root filesystem slots, and an
+# empty ext4 data partition for the overlay upper layer. boot.scr
+# (recipes-bsp/rpi-u-boot-scr) chooses the slot, rpi-switch-overlay-init
+# mounts the data partition.
+#
+#   p1  boot    vfat       64 MiB
+#   p2  slot A  squashfs  256 MiB
+#   p3  slot B  squashfs  256 MiB
+#   p4  data    ext4      256 MiB
+#
+# The partition numbers are fixed: boot.scr, overlay-init and the .swu refer to
+# them. MBR has room for exactly these four primary partitions.
+#
+# The image file comes from IMGDEPLOYDIR, since wic runs before
+# do_image_complete copies it to DEPLOY_DIR_IMAGE.
+
+part /boot --source bootimg-partition --ondisk mmcblk0 --fstype=vfat --label boot --active --align 4096 --fixed-size 64M --no-fstab-update
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_NAME}.squashfs-xz" --ondisk mmcblk0 --align 4096 --fixed-size 256M
+part --source rawcopy --sourceparams="file=${IMGDEPLOYDIR}/${IMAGE_NAME}.squashfs-xz" --ondisk mmcblk0 --align 4096 --fixed-size 256M
+part --fstype=ext4 --label data --ondisk mmcblk0 --align 4096 --fixed-size 256M
+
+bootloader --ptable msdos

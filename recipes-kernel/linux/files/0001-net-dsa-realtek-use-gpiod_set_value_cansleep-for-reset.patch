@@ -1,0 +1,42 @@
+From b9271de0942082b9affb322a6da3c5fcb10f1a9d Mon Sep 17 00:00:00 2001
+From: Albrecht Lohofener <albrechtloh@gmx.de>
+Date: Fri, 25 Sep 2026 08:26:26 +0200
+Subject: [PATCH 01/21] net: dsa: realtek: use gpiod_set_value_cansleep() for
+ the reset line
+
+rtl83xx_reset_assert() and rtl83xx_reset_deassert() are only called from
+process context, so the sleeping variant is correct and also works for a
+reset GPIO behind a sleeping controller.
+
+The rtl8365mb backports taken from OpenWrt's backport-6.18 series were
+generated against a 6.18.y that already has these two lines; without this
+change their rtl83xx.c hunks do not apply to the Raspberry Pi 6.18.33 tree.
+
+Upstream-Status: Inappropriate [context prerequisite for the OpenWrt rtl8365mb backports]
+Signed-off-by: Albrecht Lohofener <albrechtloh@gmx.de>
+---
+ drivers/net/dsa/realtek/rtl83xx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/dsa/realtek/rtl83xx.c b/drivers/net/dsa/realtek/rtl83xx.c
+index 2b9bd44..0df45c7 100644
+--- a/drivers/net/dsa/realtek/rtl83xx.c
++++ b/drivers/net/dsa/realtek/rtl83xx.c
+@@ -309,7 +309,7 @@ void rtl83xx_reset_assert(struct realtek_priv *priv)
+ 			 "Failed to assert the switch reset control: %pe\n",
+ 			 ERR_PTR(ret));
+ 
+-	gpiod_set_value(priv->reset, true);
++	gpiod_set_value_cansleep(priv->reset, true);
+ }
+ 
+ void rtl83xx_reset_deassert(struct realtek_priv *priv)
+@@ -322,7 +322,7 @@ void rtl83xx_reset_deassert(struct realtek_priv *priv)
+ 			 "Failed to deassert the switch reset control: %pe\n",
+ 			 ERR_PTR(ret));
+ 
+-	gpiod_set_value(priv->reset, false);
++	gpiod_set_value_cansleep(priv->reset, false);
+ }
+ 
+ MODULE_AUTHOR("Luiz Angelo Daros de Luca <luizluca@gmail.com>");

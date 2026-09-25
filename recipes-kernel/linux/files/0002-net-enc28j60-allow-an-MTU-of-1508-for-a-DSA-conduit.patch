@@ -1,0 +1,49 @@
+From 78310aaa201b9c58c372c47af7b0fe5e7534e8fc Mon Sep 17 00:00:00 2001
+From: Albrecht Lohofener <albrechtloh@gmx.de>
+Date: Fri, 25 Sep 2026 08:26:40 +0200
+Subject: [PATCH 20/21] net: enc28j60: allow an MTU of 1508 for a DSA conduit
+
+The ENC28J60 is the DSA conduit of the RTL8367S on the 4-port managed
+switch HAT. The rtl8_4 tag adds 8 bytes to every frame, so DSA raises the
+conduit MTU to 1508 when the switch probes. The driver caps max_mtu at the
+default 1500 and its receive filter at a 1518 byte frame, so full sized
+frames from the switch ports would be dropped.
+
+Raise both by the tag length.
+
+Taken from https://github.com/AlbrechtL/openwrt/tree/rpi_managed_switch
+(target/linux/bcm27xx/patches-6.12/999-0001-increase-enc28j60-mtu-for-dsa.patch).
+
+Upstream-Status: Inappropriate [board specific, hard-codes the rtl8_4 tag length]
+Signed-off-by: Albrecht Lohofener <albrechtloh@gmx.de>
+---
+ drivers/net/ethernet/microchip/enc28j60.c    | 1 +
+ drivers/net/ethernet/microchip/enc28j60_hw.h | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/microchip/enc28j60.c b/drivers/net/ethernet/microchip/enc28j60.c
+index d6c9491..60ff968 100644
+--- a/drivers/net/ethernet/microchip/enc28j60.c
++++ b/drivers/net/ethernet/microchip/enc28j60.c
+@@ -1575,6 +1575,7 @@ static int enc28j60_probe(struct spi_device *spi)
+ 	dev->netdev_ops = &enc28j60_netdev_ops;
+ 	dev->watchdog_timeo = TX_TIMEOUT;
+ 	dev->ethtool_ops = &enc28j60_ethtool_ops;
++	dev->max_mtu = 1508; /*  Increase max MTU by 8 bytes because DSA adds 8 bytes in my case (rtl8365 driver). */
+ 
+ 	enc28j60_lowpower(priv, true);
+ 
+diff --git a/drivers/net/ethernet/microchip/enc28j60_hw.h b/drivers/net/ethernet/microchip/enc28j60_hw.h
+index da4ab17..0731b9b 100644
+--- a/drivers/net/ethernet/microchip/enc28j60_hw.h
++++ b/drivers/net/ethernet/microchip/enc28j60_hw.h
+@@ -302,7 +302,8 @@
+ #define RXEND_INIT		0x19FF
+ 
+ /* maximum ethernet frame length */
+-#define MAX_FRAMELEN		1518
++/* Increase max frame len by 8 bytes because DSA adds 8 bytes in my case (rtl8365 driver). Original value was 1518. */
++#define MAX_FRAMELEN		1526
+ 
+ /* Preferred half duplex: LEDA: Link status LEDB: Rx/Tx activity */
+ #define ENC28J60_LAMPS_MODE	0x3476

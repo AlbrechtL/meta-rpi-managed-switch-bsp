@@ -1,0 +1,44 @@
+# A/B boot for the 4-port managed switch HAT (meta-rpi-managed-switch-bsp).
+#
+#   p1  boot    vfat      firmware, config.txt, DTB and overlays, U-Boot,
+#                         this script, uboot.env, kernel-a.img, kernel-b.img
+#   p2  slot A  squashfs  root filesystem
+#   p3  slot B  squashfs  root filesystem
+#   p4  data    ext4      overlay upper layer, shared by both slots
+#
+# "rootpart" (2 or 3) is the slot to boot. An update writes the other slot and
+# its kernel, then sets rootpart to it, upgrade_available=1 and bootcount=0
+# (ethernet-switch-os-swu-upgrade). From then on every boot counts, until
+# userspace confirms that the new slot works (rpi-switch-ab-confirm) and
+# clears upgrade_available. After more than bootlimit unconfirmed boots this
+# script switches back to the previous slot. panic=5 turns a kernel that
+# cannot mount its root into such an unconfirmed boot.
+
+if test -z "${rootpart}"; then setenv rootpart 2; fi
+if test -z "${bootlimit}"; then setenv bootlimit 3; fi
+
+if test "${upgrade_available}" = "1"; then
+    if test -z "${bootcount}"; then setenv bootcount 0; fi
+    setexpr bootcount ${bootcount} + 1
+    if test ${bootcount} -gt ${bootlimit}; then
+        echo "A/B: partition ${rootpart} was not confirmed after ${bootlimit} boots, switching back"
+        if test "${rootpart}" = "2"; then setenv rootpart 3; else setenv rootpart 2; fi
+        setenv upgrade_available 0
+        setenv bootcount 0
+    fi
+    saveenv
+fi
+
+# The first boot creates uboot.env, which fw_printenv and SWUpdate need.
+if test ! -e @@BOOT_MEDIA@@ 0:1 uboot.env; then saveenv; fi
+
+if test "${rootpart}" = "3"; then setenv slot b; else setenv slot a; fi
+echo "A/B: booting slot ${slot} (partition ${rootpart})"
+
+# The firmware has put cmdline.txt into /chosen/bootargs and applied the
+# overlays from config.txt to the device tree at fdt_addr.
+fdt addr ${fdt_addr} && fdt get value bootargs /chosen bootargs
+setenv bootargs "${bootargs} root=/dev/mmcblk0p${rootpart} rootfstype=squashfs rootwait init=/sbin/overlay-init panic=5"
+
+fatload @@BOOT_MEDIA@@ 0:1 ${kernel_addr_r} kernel-${slot}.img
+@@KERNEL_BOOTCMD@@ ${kernel_addr_r} - ${fdt_addr}

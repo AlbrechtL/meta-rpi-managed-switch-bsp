@@ -1,0 +1,55 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          rpi-switch-mac
+# Required-Start:
+# Default-Start:     S
+# Short-Description: Fixed MAC addresses for the switch ports
+### END INIT INFO
+#
+# The ENC28J60 has no MAC address of its own, so the kernel makes up a random
+# one on every boot, and the DSA user ports lan1..lanN copy it when the switch
+# probes. The switch would then show up with a new address -- and get a new
+# DHCP lease -- after every reboot.
+#
+# Derive the addresses from the SoC serial number instead, in the Raspberry
+# Pi OUI, exactly as the OpenWrt port for this board does
+# (target/linux/bcm27xx/base-files/etc/board.d/02_network on
+# AlbrechtL/openwrt rpi_managed_switch): the conduit and lan1 get the base
+# address, each further port the next one. The bridge clixon-switch creates
+# takes the lowest port address, i.e. the base address.
+#
+# Runs from rcS.d, before clixon-backend brings any of the interfaces up.
+
+case "$1" in
+    start) ;;
+    *) exit 0 ;;
+esac
+
+serial=$(sed -n 's/^Serial[[:space:]]*:[[:space:]]*//p' /proc/cpuinfo)
+if [ ${#serial} -lt 6 ]; then
+    echo "rpi-switch-mac: no serial number in /proc/cpuinfo, keeping random addresses"
+    exit 0
+fi
+# The last six hex digits.
+base=$((0x${serial#"${serial%??????}"}))
+
+setmac() {
+    mac=$(printf 'b8:27:eb:%02x:%02x:%02x' \
+        $((($2 >> 16) & 0xff)) $((($2 >> 8) & 0xff)) $(($2 & 0xff)))
+    ip link set dev "$1" address "$mac" ||
+        echo "rpi-switch-mac: cannot set $mac on $1"
+}
+
+for dev in /sys/class/net/*; do
+    driver=$(readlink "$dev/device/driver" 2>/dev/null)
+    if [ "${driver##*/}" = enc28j60 ]; then
+        setmac "${dev##*/}" $base
+    fi
+done
+
+offset=0
+for port in lan1 lan2 lan3 lan4 lan5 lan6 lan7 lan8; do
+    [ -e /sys/class/net/$port ] || continue
+    setmac $port $(((base + offset) & 0xffffff))
+    offset=$((offset + 1))
+done

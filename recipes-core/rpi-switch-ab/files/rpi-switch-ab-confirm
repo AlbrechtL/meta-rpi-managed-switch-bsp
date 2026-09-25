@@ -1,0 +1,29 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          rpi-switch-ab-confirm
+# Required-Start:    $all
+# Default-Start:     2 3 4 5
+# Short-Description: Confirm that the A/B slot booted after an update
+### END INIT INFO
+#
+# After an update boot.scr counts every boot of the new slot and switches back
+# to the old one once bootlimit boots went unconfirmed. Reaching the end of
+# rc5.d, with clixon-backend started, counts as a working system: clear the
+# counter so the slot stays.
+
+case "$1" in
+    start) ;;
+    *) exit 0 ;;
+esac
+
+[ "$(fw_printenv -n upgrade_available 2>/dev/null)" = "1" ] || exit 0
+
+# One write to uboot.env for both variables.
+script=/tmp/rpi-switch-ab-confirm.$$
+printf 'upgrade_available 0\nbootcount 0\n' > $script
+if fw_setenv -s $script; then
+    echo "A/B: slot on $(sed -n 's/.*root=\([^ ]*\).*/\1/p' /proc/cmdline) confirmed"
+else
+    echo "A/B: cannot confirm the slot, U-Boot will switch back after bootlimit boots"
+fi
+rm -f $script
