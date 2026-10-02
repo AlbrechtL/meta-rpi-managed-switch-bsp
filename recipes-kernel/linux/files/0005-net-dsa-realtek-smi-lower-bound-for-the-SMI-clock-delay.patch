@@ -1,0 +1,55 @@
+From: Albrecht Lohofener <albrechtloh@gmx.de>
+Subject: [PATCH] net: dsa: realtek: smi: lower bound for the SMI clock delay
+
+On the Raspberry Pi Zero with the 4-port managed switch HAT, SMI transfers
+to the RTL8367S fail at random. The same probe stops at a different
+register each time:
+
+  rtl8365mb-smi switch: ACK timeout
+  rtl8365mb-smi switch: failed to read chip id and version: -ETIMEDOUT
+
+and, on a later bind,
+
+  rtl8365mb-smi switch: found an RTL8367S switch
+  rtl8365mb-smi switch: ACK timeout
+  rtl8365mb-smi switch: failed to probe SerDes chip option: -ETIMEDOUT
+
+The variants ask for clk_delay = 10 ns between edges of the bit-banged
+MDC/MDIO lines. On the Pi's GPIOs that is practically no delay at all: the
+clock runs as fast as the CPU can toggle the pins, and MDIO is sampled
+before the switch had time to drive it.
+
+Delay at least smi_clk_delay_ns (default 5000 ns) instead. Measured on
+the hardware: at 10 and 1000 ns the probe fails every time, at 5000 ns it
+succeeds, the switch registers and lan1-lan4 come up. Internal pull-ups on
+MDC/MDIO (gpio=17,27=pu) made no difference. The SMI clock drops to about
+100 kHz. The parameter is writable in /sys/module/realtek_dsa/parameters/,
+so other values can be tried with an unbind/bind without a new kernel.
+
+Upstream-Status: Inappropriate [workaround, the real limit is board specific]
+Signed-off-by: Albrecht Lohofener <albrechtloh@gmx.de>
+---
+--- a/drivers/net/dsa/realtek/realtek-smi.c
++++ b/drivers/net/dsa/realtek/realtek-smi.c
+@@ -44,9 +44,20 @@
+ 
+ #define REALTEK_SMI_ACK_RETRY_COUNT		5
+ 
++/*
++ * Lower bound for the time between two edges on the bit-banged SMI lines.
++ * The variants ask for 10 ns, which on a fast CPU with fast GPIOs (Raspberry
++ * Pi) leaves no time for the switch to drive MDIO before it is sampled, and
++ * transfers fail at random with "ACK timeout".
++ */
++static unsigned int smi_clk_delay_ns = 5000;
++module_param(smi_clk_delay_ns, uint, 0644);
++MODULE_PARM_DESC(smi_clk_delay_ns,
++		 "Minimum delay between SMI clock edges in ns (default 5000)");
++
+ static inline void realtek_smi_clk_delay(struct realtek_priv *priv)
+ {
+-	ndelay(priv->variant->clk_delay);
++	ndelay(max(priv->variant->clk_delay, smi_clk_delay_ns));
+ }
+ 
+ static void realtek_smi_start(struct realtek_priv *priv)

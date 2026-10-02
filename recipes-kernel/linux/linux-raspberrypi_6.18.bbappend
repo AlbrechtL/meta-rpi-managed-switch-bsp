@@ -31,6 +31,13 @@ SRC_URI:append:rpi-managed-switch = " \
     file://0004-net-dsa-realtek-rtl8365mb-provide-field_get-on-6.18.patch \
 "
 
+# Bit-banged SMI on the Pi's GPIOs is too fast for the RTL8367S with the
+# driver's 10 ns clock delay; transfers fail at random with "ACK timeout".
+# 0005 makes it at least 5 us, tunable via realtek_dsa.smi_clk_delay_ns.
+SRC_URI:append:rpi-managed-switch = " \
+    file://0005-net-dsa-realtek-smi-lower-bound-for-the-SMI-clock-delay.patch \
+"
+
 # The board itself, from https://github.com/AlbrechtL/openwrt/tree/rpi_managed_switch:
 # ENC28J60 MTU for the 8 byte DSA tag, and the device tree overlay.
 SRC_URI:append:rpi-managed-switch = " \
