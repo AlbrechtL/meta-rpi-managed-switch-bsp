@@ -23,6 +23,13 @@ ENABLE_SPI_BUS = "1"
 RPI_KERNEL_DEVICETREE_OVERLAYS:append = " overlays/rtl8365mb-enc28j60-switch.dtbo"
 RPI_EXTRA_CONFIG = "dtoverlay=rtl8365mb-enc28j60-switch"
 
+# On a Pi Zero W, Bluetooth takes the PL011 and the serial console moves to
+# the mini UART (ttyS0), away from SERIAL_CONSOLES' ttyAMA0. As in OpenWrt's
+# distroconfig.txt, give the PL011 back to the GPIO header. On the Zero,
+# which has no Bluetooth, the overlay changes nothing. rpi-config prints
+# RPI_EXTRA_CONFIG with printf, so \n separates lines.
+RPI_EXTRA_CONFIG:append = "\ndtoverlay=disable-bt"
+
 # Headless: no vc4 KMS overlay. The serial console is the one to use.
 DISABLE_VC4GRAPHICS = "1"
 ENABLE_UART = "1"
